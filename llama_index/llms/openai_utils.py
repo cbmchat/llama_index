@@ -5,7 +5,9 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Type, Union
 
 import openai
 from openai import ChatCompletion, Completion
-from pydantic import BaseModel
+
+from llama_index.bridge.pydantic import BaseModel
+
 from tenacity import (
     before_sleep_log,
     retry,
