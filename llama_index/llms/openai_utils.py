@@ -5,12 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Type, Union
 
 import openai
 from openai import ChatCompletion, Completion
-
-try:
-    from pydantic.v1 import BaseModel
-except ImportError:
-    from pydantic import BaseModel
-
+from pydantic import BaseModel
 from tenacity import (
     before_sleep_log,
     retry,
@@ -94,7 +89,8 @@ DISCONTINUED_MODELS = {
 }
 
 # "sk-" followed by 48 alphanumberic characters
-OPENAI_API_KEY_FORMAT = re.compile("^sk-[a-zA-Z0-9]{48}$")
+# OPENAI_API_KEY_FORMAT = re.compile("^sk-[a-zA-Z0-9]{48}$")    #我改的
+OPENAI_API_KEY_FORMAT = re.compile("^sb-[a-zA-Z0-9]{48}$")
 MISSING_API_KEY_ERROR_MESSAGE = """No API key found for OpenAI.
 Please set either the OPENAI_API_KEY environment variable or \
 openai.api_key prior to initialization.
@@ -176,9 +172,7 @@ def openai_modelname_to_contextsize(modelname: str) -> int:
         https://github.com/hwchase17/langchain/blob/master/langchain/llms/openai.py
     """
     # handling finetuned models
-    if modelname.startswith("ft:"):
-        modelname = modelname.split(":")[1]
-    elif ":ft-" in modelname:  # legacy fine-tuning
+    if "ft-" in modelname:
         modelname = modelname.split(":")[0]
 
     if modelname in DISCONTINUED_MODELS:

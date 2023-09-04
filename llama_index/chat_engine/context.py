@@ -18,13 +18,18 @@ from llama_index.memory import BaseMemory, ChatMemoryBuffer
 from llama_index.schema import MetadataMode, NodeWithScore
 from llama_index.callbacks import CallbackManager, trace_method
 
+# DEFAULT_CONTEXT_TEMPALTE = (
+#     "Context information is below."
+#     "\n--------------------\n"
+#     "{context_str}"
+#     "\n--------------------\n"
+# )
 DEFAULT_CONTEXT_TEMPALTE = (
-    "Context information is below."
-    "\n--------------------\n"
-    "{context_str}"
-    "\n--------------------\n"
+     "上下文信息如下。"
+     "\n--------------------\n"
+     "{context_str}"
+     "\n--------------------\n"
 )
-
 
 class ContextChatEngine(BaseChatEngine):
     """Context Chat Engine.
@@ -62,7 +67,6 @@ class ContextChatEngine(BaseChatEngine):
         system_prompt: Optional[str] = None,
         prefix_messages: Optional[List[ChatMessage]] = None,
         node_postprocessors: Optional[List[BaseNodePostprocessor]] = None,
-        context_template: Optional[str] = None,
         **kwargs: Any,
     ) -> "ContextChatEngine":
         """Initialize a ContextChatEngine from default parameters."""
@@ -93,7 +97,6 @@ class ContextChatEngine(BaseChatEngine):
             prefix_messages=prefix_messages,
             node_postprocessors=node_postprocessors,
             callback_manager=service_context.callback_manager,
-            context_template=context_template,
         )
 
     def _generate_context(self, message: str) -> Tuple[str, List[NodeWithScore]]:
