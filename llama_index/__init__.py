@@ -82,7 +82,7 @@ from llama_index.prompts import (
     ChatPromptTemplate,
     SelectorPromptTemplate,
     # backwards compatibility
-    Prompt,
+    PromptTemplate,
 )
 from llama_index.prompts.prompts import (
     KeywordExtractPrompt,
@@ -175,7 +175,7 @@ __all__ = [
     "GPTPandasIndex",
     "GPTSQLStructStoreIndex",
     "GPTDocumentSummaryIndex",
-    "Prompt",
+    "PromptTemplate",
     "PromptTemplate",
     "BasePromptTemplate",
     "ChatPromptTemplate",

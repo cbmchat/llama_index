@@ -4,7 +4,7 @@ from llama_index.prompts.base import (
     BasePromptTemplate,
     ChatPromptTemplate,
     LangchainPromptTemplate,
-    Prompt,
+    PromptTemplate,
     PromptTemplate,
     PromptType,
     SelectorPromptTemplate,
@@ -13,7 +13,7 @@ from llama_index.prompts.base import (
 from llama_index.llms.base import ChatMessage, MessageRole
 
 __all__ = [
-    "Prompt",
+    "PromptTemplate",
     "PromptTemplate",
     "SelectorPromptTemplate",
     "ChatPromptTemplate",
