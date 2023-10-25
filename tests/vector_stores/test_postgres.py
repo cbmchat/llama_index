@@ -1,14 +1,13 @@
 import asyncio
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Dict, Generator, List, Union, cast
 
 import pytest
-
 from llama_index.schema import NodeRelationship, RelatedNodeInfo, TextNode
 from llama_index.vector_stores import PGVectorStore
+from llama_index.vector_stores.loading import load_vector_store
 from llama_index.vector_stores.types import (
     ExactMatchFilter,
     MetadataFilters,
-    NodeWithEmbedding,
     VectorStoreQuery,
     VectorStoreQueryMode,
 )
@@ -16,20 +15,24 @@ from llama_index.vector_stores.types import (
 # from testing find install here https://github.com/pgvector/pgvector#installation-notes
 
 
-PARAMS: Dict[str, Union[str, int]] = dict(
-    host="localhost", user="postgres", password="password", port=5432
-)
+PARAMS: Dict[str, Union[str, int]] = {
+    "host": "localhost",
+    "user": "postgres",
+    "password": "mark90",
+    "port": 5432,
+}
 TEST_DB = "test_vector_db"
 TEST_TABLE_NAME = "lorem_ipsum"
+TEST_SCHEMA_NAME = "test"
 TEST_EMBED_DIM = 2
 
 
 try:
-    import asyncpg  # noqa: F401
-    import pgvector  # noqa: F401
-    import psycopg2  # noqa: F401
-    import sqlalchemy  # noqa: F401
-    import sqlalchemy.ext.asyncio  # noqa: F401
+    import asyncpg
+    import pgvector
+    import psycopg2
+    import sqlalchemy
+    import sqlalchemy.ext.asyncio
 
     # connection check
     conn__ = psycopg2.connect(**PARAMS)  # type: ignore
@@ -52,8 +55,7 @@ def _get_sample_vector(num: float) -> List[float]:
 def conn() -> Any:
     import psycopg2
 
-    conn_ = psycopg2.connect(**PARAMS)  # type: ignore
-    return conn_
+    return psycopg2.connect(**PARAMS)  # type: ignore
 
 
 @pytest.fixture()
@@ -70,12 +72,13 @@ def db(conn: Any) -> Generator:
         conn.commit()
 
 
-@pytest.fixture
+@pytest.fixture()
 def pg(db: None) -> Any:
     pg = PGVectorStore.from_params(
         **PARAMS,  # type: ignore
         database=TEST_DB,
         table_name=TEST_TABLE_NAME,
+        schema_name=TEST_SCHEMA_NAME,
         embed_dim=TEST_EMBED_DIM,
     )
 
@@ -84,12 +87,13 @@ def pg(db: None) -> Any:
     asyncio.run(pg.close())
 
 
-@pytest.fixture
+@pytest.fixture()
 def pg_hybrid(db: None) -> Any:
     pg = PGVectorStore.from_params(
         **PARAMS,  # type: ignore
         database=TEST_DB,
         table_name=TEST_TABLE_NAME,
+        schema_name=TEST_SCHEMA_NAME,
         hybrid_search=True,
         embed_dim=TEST_EMBED_DIM,
     )
@@ -100,91 +104,83 @@ def pg_hybrid(db: None) -> Any:
 
 
 @pytest.fixture(scope="session")
-def node_embeddings() -> List[NodeWithEmbedding]:
+def node_embeddings() -> List[TextNode]:
     return [
-        NodeWithEmbedding(
+        TextNode(
+            text="lorem ipsum",
+            id_="aaa",
+            relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="aaa")},
             embedding=_get_sample_vector(1.0),
-            node=TextNode(
-                text="lorem ipsum",
-                id_="aaa",
-                relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="aaa")},
-            ),
         ),
-        NodeWithEmbedding(
+        TextNode(
+            text="dolor sit amet",
+            id_="bbb",
+            relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="bbb")},
+            extra_info={"test_key": "test_value"},
             embedding=_get_sample_vector(0.1),
-            node=TextNode(
-                text="dolor sit amet",
-                id_="bbb",
-                relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="bbb")},
-                extra_info={"test_key": "test_value"},
-            ),
         ),
     ]
 
 
 @pytest.fixture(scope="session")
-def hybrid_node_embeddings() -> List[NodeWithEmbedding]:
+def hybrid_node_embeddings() -> List[TextNode]:
     return [
-        NodeWithEmbedding(
+        TextNode(
+            text="lorem ipsum",
+            id_="aaa",
+            relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="aaa")},
             embedding=_get_sample_vector(0.1),
-            node=TextNode(
-                text="lorem ipsum",
-                id_="aaa",
-                relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="aaa")},
-            ),
         ),
-        NodeWithEmbedding(
+        TextNode(
+            text="dolor sit amet",
+            id_="bbb",
+            relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="bbb")},
+            extra_info={"test_key": "test_value"},
             embedding=_get_sample_vector(1.0),
-            node=TextNode(
-                text="dolor sit amet",
-                id_="bbb",
-                relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="bbb")},
-                extra_info={"test_key": "test_value"},
-            ),
         ),
-        NodeWithEmbedding(
+        TextNode(
+            text="The quick brown fox jumped over the lazy dog.",
+            id_="ccc",
+            relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="ccc")},
             embedding=_get_sample_vector(5.0),
-            node=TextNode(
-                text="The quick brown fox jumped over the lazy dog.",
-                id_="ccc",
-                relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="ccc")},
-            ),
         ),
-        NodeWithEmbedding(
+        TextNode(
+            text="The fox and the hound",
+            id_="ddd",
+            relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="ddd")},
+            extra_info={"test_key": "test_value"},
             embedding=_get_sample_vector(10.0),
-            node=TextNode(
-                text="The fox and the hound",
-                id_="ddd",
-                relationships={NodeRelationship.SOURCE: RelatedNodeInfo(node_id="ddd")},
-                extra_info={"test_key": "test_value"},
-            ),
         ),
     ]
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_instance_creation(db: None) -> None:
     pg = PGVectorStore.from_params(
         **PARAMS,  # type: ignore
         database=TEST_DB,
         table_name=TEST_TABLE_NAME,
+        schema_name=TEST_SCHEMA_NAME,
     )
     assert isinstance(pg, PGVectorStore)
+    assert not hasattr(pg, "_engine")
+    assert pg.client is None
     await pg.close()
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("use_async", [True, False])
 async def test_add_to_db_and_query(
-    pg: PGVectorStore, node_embeddings: List[NodeWithEmbedding], use_async: bool
+    pg: PGVectorStore, node_embeddings: List[TextNode], use_async: bool
 ) -> None:
     if use_async:
         await pg.async_add(node_embeddings)
     else:
         pg.add(node_embeddings)
     assert isinstance(pg, PGVectorStore)
+    assert hasattr(pg, "_engine")
     q = VectorStoreQuery(query_embedding=_get_sample_vector(1.0), similarity_top_k=1)
     if use_async:
         res = await pg.aquery(q)
@@ -196,16 +192,17 @@ async def test_add_to_db_and_query(
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("use_async", [True, False])
 async def test_add_to_db_and_query_with_metadata_filters(
-    pg: PGVectorStore, node_embeddings: List[NodeWithEmbedding], use_async: bool
+    pg: PGVectorStore, node_embeddings: List[TextNode], use_async: bool
 ) -> None:
     if use_async:
         await pg.async_add(node_embeddings)
     else:
         pg.add(node_embeddings)
     assert isinstance(pg, PGVectorStore)
+    assert hasattr(pg, "_engine")
     filters = MetadataFilters(
         filters=[ExactMatchFilter(key="test_key", value="test_value")]
     )
@@ -222,16 +219,17 @@ async def test_add_to_db_and_query_with_metadata_filters(
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("use_async", [True, False])
 async def test_add_to_db_query_and_delete(
-    pg: PGVectorStore, node_embeddings: List[NodeWithEmbedding], use_async: bool
+    pg: PGVectorStore, node_embeddings: List[TextNode], use_async: bool
 ) -> None:
     if use_async:
         await pg.async_add(node_embeddings)
     else:
         pg.add(node_embeddings)
     assert isinstance(pg, PGVectorStore)
+    assert hasattr(pg, "_engine")
 
     q = VectorStoreQuery(query_embedding=_get_sample_vector(0.1), similarity_top_k=1)
 
@@ -242,7 +240,22 @@ async def test_add_to_db_query_and_delete(
     assert res.nodes
     assert len(res.nodes) == 1
     assert res.nodes[0].node_id == "bbb"
-    pg.delete("bbb")
+
+
+@pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
+@pytest.mark.asyncio()
+@pytest.mark.parametrize("use_async", [(True,), (False,)])
+async def test_save_load(
+    pg: PGVectorStore, node_embeddings: List[TextNode], use_async: bool
+) -> None:
+    if use_async:
+        await pg.async_add(node_embeddings)
+    else:
+        pg.add(node_embeddings)
+    assert isinstance(pg, PGVectorStore)
+    assert hasattr(pg, "_engine")
+
+    q = VectorStoreQuery(query_embedding=_get_sample_vector(0.1), similarity_top_k=1)
 
     if use_async:
         res = await pg.aquery(q)
@@ -250,15 +263,35 @@ async def test_add_to_db_query_and_delete(
         res = pg.query(q)
     assert res.nodes
     assert len(res.nodes) == 1
-    assert res.nodes[0].node_id == "aaa"
+    assert res.nodes[0].node_id == "bbb"
+
+    pg_dict = pg.to_dict()
+    await pg.close()
+
+    loaded_pg = cast(PGVectorStore, load_vector_store(pg_dict))
+    assert not hasattr(loaded_pg, "_engine")
+    loaded_pg_dict = loaded_pg.to_dict()
+    for key, val in pg.to_dict().items():
+        assert loaded_pg_dict[key] == val
+
+    if use_async:
+        res = await loaded_pg.aquery(q)
+    else:
+        res = loaded_pg.query(q)
+    assert hasattr(loaded_pg, "_engine")
+    assert res.nodes
+    assert len(res.nodes) == 1
+    assert res.nodes[0].node_id == "bbb"
+
+    await loaded_pg.close()
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("use_async", [True, False])
 async def test_sparse_query(
     pg_hybrid: PGVectorStore,
-    hybrid_node_embeddings: List[NodeWithEmbedding],
+    hybrid_node_embeddings: List[TextNode],
     use_async: bool,
 ) -> None:
     if use_async:
@@ -266,6 +299,7 @@ async def test_sparse_query(
     else:
         pg_hybrid.add(hybrid_node_embeddings)
     assert isinstance(pg_hybrid, PGVectorStore)
+    assert hasattr(pg_hybrid, "_engine")
 
     # text search should work when query is a sentence and not just a single word
     q = VectorStoreQuery(
@@ -286,11 +320,11 @@ async def test_sparse_query(
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("use_async", [True, False])
 async def test_hybrid_query(
     pg_hybrid: PGVectorStore,
-    hybrid_node_embeddings: List[NodeWithEmbedding],
+    hybrid_node_embeddings: List[TextNode],
     use_async: bool,
 ) -> None:
     if use_async:
@@ -298,6 +332,7 @@ async def test_hybrid_query(
     else:
         pg_hybrid.add(hybrid_node_embeddings)
     assert isinstance(pg_hybrid, PGVectorStore)
+    assert hasattr(pg_hybrid, "_engine")
 
     q = VectorStoreQuery(
         query_embedding=_get_sample_vector(0.1),
@@ -357,11 +392,11 @@ async def test_hybrid_query(
 
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 @pytest.mark.parametrize("use_async", [True, False])
 async def test_add_to_db_and_hybrid_query_with_metadata_filters(
     pg_hybrid: PGVectorStore,
-    hybrid_node_embeddings: List[NodeWithEmbedding],
+    hybrid_node_embeddings: List[TextNode],
     use_async: bool,
 ) -> None:
     if use_async:
@@ -369,6 +404,7 @@ async def test_add_to_db_and_hybrid_query_with_metadata_filters(
     else:
         pg_hybrid.add(hybrid_node_embeddings)
     assert isinstance(pg_hybrid, PGVectorStore)
+    assert hasattr(pg_hybrid, "_engine")
     filters = MetadataFilters(
         filters=[ExactMatchFilter(key="test_key", value="test_value")]
     )
@@ -391,7 +427,7 @@ async def test_add_to_db_and_hybrid_query_with_metadata_filters(
 
 @pytest.mark.skipif(postgres_not_available, reason="postgres db is not available")
 def test_hybrid_query_fails_if_no_query_str_provided(
-    pg_hybrid: PGVectorStore, hybrid_node_embeddings: List[NodeWithEmbedding]
+    pg_hybrid: PGVectorStore, hybrid_node_embeddings: List[TextNode]
 ) -> None:
     q = VectorStoreQuery(
         query_embedding=_get_sample_vector(1.0),

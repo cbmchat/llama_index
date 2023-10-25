@@ -1,4 +1,4 @@
-from typing import Any, List, Sequence
+from typing import Any, List, Optional, Sequence
 
 from llama_index.prompts.prompt_utils import get_biggest_prompt
 from llama_index.response_synthesizers.refine import Refine
@@ -12,18 +12,22 @@ class CompactAndRefine(Refine):
         self,
         query_str: str,
         text_chunks: Sequence[str],
+        prev_response: Optional[RESPONSE_TEXT_TYPE] = None,
         **response_kwargs: Any,
     ) -> RESPONSE_TEXT_TYPE:
         compact_texts = self._make_compact_text_chunks(query_str, text_chunks)
-        response = await super().aget_response(
-            query_str=query_str, text_chunks=compact_texts, **response_kwargs
+        return await super().aget_response(
+            query_str=query_str,
+            text_chunks=compact_texts,
+            prev_response=prev_response,
+            **response_kwargs,
         )
-        return response
 
     def get_response(
         self,
         query_str: str,
         text_chunks: Sequence[str],
+        prev_response: Optional[RESPONSE_TEXT_TYPE] = None,
         **response_kwargs: Any,
     ) -> RESPONSE_TEXT_TYPE:
         """Get compact response."""
@@ -31,10 +35,12 @@ class CompactAndRefine(Refine):
         # TODO: This is a temporary fix - reason it's temporary is that
         # the refine template does not account for size of previous answer.
         new_texts = self._make_compact_text_chunks(query_str, text_chunks)
-        response = super().get_response(
-            query_str=query_str, text_chunks=new_texts, **response_kwargs
+        return super().get_response(
+            query_str=query_str,
+            text_chunks=new_texts,
+            prev_response=prev_response,
+            **response_kwargs,
         )
-        return response
 
     def _make_compact_text_chunks(
         self, query_str: str, text_chunks: Sequence[str]
@@ -43,6 +49,4 @@ class CompactAndRefine(Refine):
         refine_template = self._refine_template.partial_format(query_str=query_str)
 
         max_prompt = get_biggest_prompt([text_qa_template, refine_template])
-        new_texts = self._service_context.prompt_helper.repack(max_prompt, text_chunks)
-
-        return new_texts
+        return self._service_context.prompt_helper.repack(max_prompt, text_chunks)

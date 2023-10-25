@@ -3,7 +3,6 @@ import logging
 from typing import Callable, List, Optional
 
 from llama_index.bridge.pydantic import Field, PrivateAttr
-
 from llama_index.callbacks.base import CallbackManager
 from llama_index.callbacks.schema import CBEventType, EventPayload
 from llama_index.constants import DEFAULT_CHUNK_OVERLAP, DEFAULT_CHUNK_SIZE
@@ -76,7 +75,6 @@ class TokenTextSplitter(MetadataAwareTextSplitter):
 
     @classmethod
     def class_name(cls) -> str:
-        """Get class name."""
         return "TokenTextSplitter"
 
     def split_text_metadata_aware(self, text: str, metadata_str: str) -> List[str]:

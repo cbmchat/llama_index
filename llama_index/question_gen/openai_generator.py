@@ -4,6 +4,7 @@ from llama_index.indices.query.schema import QueryBundle
 from llama_index.llms.base import LLM
 from llama_index.llms.openai import OpenAI
 from llama_index.program.openai_program import OpenAIPydanticProgram
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.question_gen.prompts import build_tools_text
 from llama_index.question_gen.types import (
     BaseQuestionGenerator,
@@ -26,7 +27,7 @@ questions that can be answered by the tools.
 
 These are the guidelines you consider when completing your task:
 * Be as specific as possible
-* The sub questions should be relevant to the user question 
+* The sub questions should be relevant to the user question
 * The sub questions should be answerable by the tools provided
 * You can generate multiple sub questions for each tool
 * Tools must be specified by their name, not their description
@@ -68,6 +69,15 @@ class OpenAIQuestionGenerator(BaseQuestionGenerator):
             verbose=verbose,
         )
         return cls(program, verbose)
+
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {"question_gen_prompt": self._program.prompt}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "question_gen_prompt" in prompts:
+            self._program.prompt = prompts["question_gen_prompt"]
 
     def generate(
         self, tools: Sequence[ToolMetadata], query: QueryBundle

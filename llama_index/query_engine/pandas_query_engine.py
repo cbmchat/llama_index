@@ -13,14 +13,15 @@ from typing import Any, Callable, Optional
 import numpy as np
 import pandas as pd
 
-from llama_index.bridge.langchain import print_text
 from llama_index.indices.query.base import BaseQueryEngine
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.indices.service_context import ServiceContext
 from llama_index.indices.struct_store.pandas import PandasIndex
 from llama_index.prompts import BasePromptTemplate
 from llama_index.prompts.default_prompts import DEFAULT_PANDAS_PROMPT
+from llama_index.prompts.mixin import PromptMixinType
 from llama_index.response.schema import Response
+from llama_index.utils import print_text
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ DEFAULT_INSTRUCTION_STR = (
     "We wish to convert this query to executable Python code using Pandas.\n"
     "The final line of code should be a Python expression that can be called "
     "with the `eval()` function. This expression should represent a solution "
-    "to the query."
+    "to the query. This expression should not have leading or trailing "
+    "quotes.\n"
 )
 
 
@@ -42,7 +44,7 @@ def default_output_processor(
     import traceback
 
     if sys.version_info < (3, 9):
-        logger.warn(
+        logger.warning(
             "Python version must be >= 3.9 in order to use "
             "the default output processor, which executes "
             "the Python query. Instead, we will return the "
@@ -60,11 +62,21 @@ def default_output_processor(
         exec(ast.unparse(module), {}, local_vars)  # type: ignore
         module_end = ast.Module(tree.body[-1:], type_ignores=[])
         module_end_str = ast.unparse(module_end)  # type: ignore
-        print(module_end_str)
+        if module_end_str.strip("'\"") != module_end_str:
+            # if there's leading/trailing quotes, then we need to eval
+            # string to get the actual expression
+            module_end_str = eval(module_end_str, {"np": np}, local_vars)
         try:
-            return str(eval(module_end_str, {"np": np}, local_vars))
+            # str(pd.dataframe) will truncate output by display.max_colwidth
+            # set width temporarily to extract more text
+            if "max_colwidth" in output_kwargs:
+                pd.set_option("display.max_colwidth", output_kwargs["max_colwidth"])
+            output_str = str(eval(module_end_str, {"np": np}, local_vars))
+            pd.reset_option("display.max_colwidth")
+            return output_str
+
         except Exception as e:
-            raise e
+            raise
     except Exception as e:
         err_string = (
             "There was an error running the output as Python code. "
@@ -91,6 +103,9 @@ class PandasQueryEngine(BaseQueryEngine):
         output_processor (Optional[Callable[[str], str]]): Output processor.
             A callable that takes in the output string, pandas DataFrame,
             and any output kwargs and returns a string.
+            eg.kwargs["max_colwidth"] = [int] is used to set the length of text
+            that each column can display during str(df). Set it to a higher number
+            if there is possibly long text in the dataframe.
         pandas_prompt (Optional[BasePromptTemplate]): Pandas prompt to use.
         head (int): Number of rows to show in the table context.
 
@@ -120,6 +135,10 @@ class PandasQueryEngine(BaseQueryEngine):
         self._service_context = service_context or ServiceContext.from_defaults()
 
         super().__init__(self._service_context.callback_manager)
+
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {"pandas_prompt": self._pandas_prompt}
 
     @classmethod
     def from_index(cls, index: PandasIndex, **kwargs: Any) -> "PandasQueryEngine":

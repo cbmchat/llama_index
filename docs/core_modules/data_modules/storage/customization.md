@@ -1,6 +1,7 @@
 # Customizing Storage
 
 By default, LlamaIndex hides away the complexities and let you query your data in under 5 lines of code:
+
 ```python
 from llama_index import VectorStoreIndex, SimpleDirectoryReader
 
@@ -12,22 +13,25 @@ response = query_engine.query("Summarize the documents.")
 
 Under the hood, LlamaIndex also supports a swappable **storage layer** that allows you to customize where ingested documents (i.e., `Node` objects), embedding vectors, and index metadata are stored.
 
-
 ![](/_static/storage/storage.png)
 
 ### Low-Level API
+
 To do this, instead of the high-level API,
+
 ```python
 index = VectorStoreIndex.from_documents(documents)
 ```
+
 we use a lower-level API that gives more granular control:
+
 ```python
 from llama_index.storage.docstore import SimpleDocumentStore
 from llama_index.storage.index_store import SimpleIndexStore
 from llama_index.vector_stores import SimpleVectorStore
 from llama_index.node_parser import SimpleNodeParser
 
-# create parser and parse document into nodes 
+# create parser and parse document into nodes
 parser = SimpleNodeParser.from_defaults()
 nodes = parser.get_nodes_from_documents(documents)
 
@@ -48,7 +52,7 @@ index = VectorStoreIndex(nodes, storage_context=storage_context)
 index.storage_context.persist(persist_dir="<persist_dir>")
 
 # can also set index_id to save multiple indexes to the same folder
-index.set_index_id = "<index_id>"
+index.set_index_id("<index_id>")
 index.storage_context.persist(persist_dir="<persist_dir>")
 
 # to load index later, make sure you setup the storage context
@@ -75,13 +79,15 @@ For saving and loading a graph/composable index, see the [full guide here](../in
 
 ### Vector Store Integrations and Storage
 
-Most of our vector store integrations store the entire index (vectors + text) in the vector store itself. This comes with the major benefit of not having to exlicitly persist the index as shown above, since the vector store is already hosted and persisting the data in our index.
+Most of our vector store integrations store the entire index (vectors + text) in the vector store itself. This comes with the major benefit of not having to explicitly persist the index as shown above, since the vector store is already hosted and persisting the data in our index.
 
 The vector stores that support this practice are:
 
+- CognitiveSearchVectorStore
 - ChatGPTRetrievalPluginClient
 - CassandraVectorStore
 - ChromaVectorStore
+- EpsillaVectorStore
 - DocArrayHnswVectorStore
 - DocArrayInMemoryVectorStore
 - LanceDBVectorStore
@@ -125,7 +131,7 @@ documents = SimpleDirectoryReader("./data").load_data()
 index = VectorStoreIndex.from_documents(documents, storage_context=storage_context)
 ```
 
-If you have an existing vector store with data already loaded in, 
+If you have an existing vector store with data already loaded in,
 you can connect to it and directly create a `VectorStoreIndex` as follows:
 
 ```python

@@ -41,8 +41,6 @@ By default, embeddings requests are sent to OpenAI in batches of 10. For some us
 embed_model = OpenAIEmbedding(embed_batch_size=42)
 ```
 
-(local-embedding-models)=
-
 ### Local Embedding Models
 
 The easiest way to use a local model is:
@@ -62,7 +60,34 @@ service_context = ServiceContext.from_defaults(
 )
 ```
 
-### Embedding Model Integrations
+### HuggingFace Optimum ONNX Embeddings
+
+LlamaIndex also supports creating and using ONNX embeddings using the Optimum library from HuggingFace. Simple create and save the ONNX embeddings, and use them.
+
+Some prerequisites:
+
+```
+pip install transformers optimum[exporters]
+```
+
+Creation with specifying the model and output path:
+
+```python
+from llama_index.embeddings import OptimumEmbedding
+
+OptimumEmbedding.create_and_save_optimum_model("BAAI/bge-small-en-v1.5", "./bge_onnx")
+```
+
+And then usage:
+
+```python
+embed_model = OptimumEmbedding(folder_name="./bge_onnx")
+service_context = ServiceContext.from_defaults(
+  embed_model=embed_model
+)
+```
+
+### LangChain Integrations
 
 We also support any embeddings offered by Langchain [here](https://python.langchain.com/docs/modules/data_connection/text_embedding/).
 
@@ -84,32 +109,47 @@ If you wanted to use embeddings not offered by LlamaIndex or Langchain, you can 
 The example below uses Instructor Embeddings ([install/setup details here](https://huggingface.co/hkunlp/instructor-large)), and implements a custom embeddings class. Instructor embeddings work by providing text, as well as "instructions" on the domain of the text to embed. This is helpful when embedding text from a very specific and specialized topic.
 
 ```python
+from pydantic import PrivateAttr
 from typing import Any, List
 from InstructorEmbedding import INSTRUCTOR
 from llama_index.embeddings.base import BaseEmbedding
 
 class InstructorEmbeddings(BaseEmbedding):
+  _model: Any = PrivateAttr()
+  _instruction: str = PrivateAttr()
+
   def __init__(
-    self, 
-    instructor_model_name: str = "hkunlp/instructor-large",
+    self,
+    model_name: str = "hkunlp/instructor-large",
     instruction: str = "Represent the Computer Science documentation or question:",
+    embed_batch_size: int = 2,
     **kwargs: Any,
   ) -> None:
-    self._model = INSTRUCTOR(instructor_model_name)
+    self._model = INSTRUCTOR(model_name)
     self._instruction = instruction
-    super().__init__(**kwargs)
+    super().__init__(model_name=model_name, embed_batch_size=embed_batch_size, **kwargs)
 
-    def _get_query_embedding(self, query: str) -> List[float]:
-      embeddings = self._model.encode([[self._instruction, query]])
-      return embeddings[0]
+  @classmethod
+  def class_name(cls) -> str:
+    return "InstructorEmbedding"
 
-    def _get_text_embedding(self, text: str) -> List[float]:
-      embeddings = self._model.encode([[self._instruction, text]])
-      return embeddings[0] 
+  def _get_query_embedding(self, query: str) -> List[float]:
+    embeddings = self._model.encode([[self._instruction, query]])
+    return embeddings[0]
 
-    def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
-      embeddings = self._model.encode([[self._instruction, text] for text in texts])
-      return embeddings
+  def _get_text_embedding(self, text: str) -> List[float]:
+    embeddings = self._model.encode([[self._instruction, text]])
+    return embeddings[0]
+
+  def _get_text_embeddings(self, texts: List[str]) -> List[List[float]]:
+    embeddings = self._model.encode([[self._instruction, text] for text in texts])
+    return embeddings
+
+  async def _aget_query_embedding(self, query: str) -> List[float]:
+    return self._get_query_embedding(query)
+
+  async def _aget_text_embedding(self, text: str) -> List[float]:
+    return self._get_text_embedding(text)
 ```
 
 ## Standalone Usage

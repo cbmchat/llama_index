@@ -3,6 +3,8 @@
 See https://github.com/ShreyaR/guardrails.
 
 """
+from deprecated import deprecated
+
 try:
     from guardrails import Guard
 except ImportError:
@@ -13,7 +15,6 @@ from copy import deepcopy
 from typing import Any, Callable, Optional
 
 from llama_index.bridge.langchain import BaseLLM
-
 from llama_index.types import BaseOutputParser
 
 
@@ -40,6 +41,7 @@ class GuardrailsOutputParser(BaseOutputParser):
         self.format_key = format_key
 
     @classmethod
+    @deprecated(version="0.8.46")
     def from_rail(
         cls, rail: str, llm: Optional[BaseLLM] = None
     ) -> "GuardrailsOutputParser":
@@ -52,6 +54,7 @@ class GuardrailsOutputParser(BaseOutputParser):
         return cls(Guard.from_rail(rail), llm=llm)
 
     @classmethod
+    @deprecated(version="0.8.46")
     def from_rail_string(
         cls, rail_string: str, llm: Optional[BaseLLM] = None
     ) -> "GuardrailsOutputParser":

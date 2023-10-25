@@ -1,9 +1,9 @@
-from typing import Any, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence
 
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.llms.openai import OpenAI
-from llama_index.program.base_program import BasePydanticProgram
 from llama_index.program.openai_program import OpenAIPydanticProgram
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.selectors.llm_selectors import _build_choices_text
 from llama_index.selectors.prompts import (
     DEFAULT_MULTI_PYD_SELECT_PROMPT_TMPL,
@@ -16,6 +16,7 @@ from llama_index.selectors.types import (
     SingleSelection,
 )
 from llama_index.tools.types import ToolMetadata
+from llama_index.types import BasePydanticProgram
 
 
 def _pydantic_output_to_selector_result(output: Any) -> SelectorResult:
@@ -55,6 +56,14 @@ class PydanticSingleSelector(BaseSelector):
             )
 
         return cls(selector_program=program)
+
+    def _get_prompts(self) -> Dict[str, Any]:
+        """Get prompts."""
+        # TODO: no accessible prompts for a base pydantic program
+        return {}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
 
     def _select(
         self, choices: Sequence[ToolMetadata], query: QueryBundle

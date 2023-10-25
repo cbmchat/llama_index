@@ -3,6 +3,7 @@
 You can use LLMs to automate metadata extraction with our `MetadataExtractor` modules.
 
 Our metadata extractor modules include the following "feature extractors":
+
 - `SummaryExtractor` - automatically extracts a summary over a set of Nodes
 - `QuestionsAnsweredExtractor` - extracts a set of questions that each Node can answer
 - `TitleExtractor` - extracts a title over the context of each Node
@@ -34,7 +35,6 @@ node_parser = SimpleNodeParser.from_defaults(
 nodes = node_parser.get_nodes_from_documents(documents)
 ```
 
-
 ```{toctree}
 ---
 caption: Metadata Extraction Guides
@@ -44,4 +44,5 @@ maxdepth: 1
 /examples/metadata_extraction/MetadataExtraction_LLMSurvey.ipynb
 /examples/metadata_extraction/EntityExtractionClimate.ipynb
 /examples/metadata_extraction/MarvinMetadataExtractorDemo.ipynb
+/examples/metadata_extraction/PydanticExtractor.ipynb
 ```

@@ -3,7 +3,6 @@
 import logging
 from typing import Callable, Dict, Optional, Union
 
-from llama_index.bridge.langchain import print_text
 from llama_index.callbacks.base import CallbackManager
 from llama_index.indices.query.base import BaseQueryEngine
 from llama_index.indices.query.query_transform.base import BaseQueryTransform
@@ -16,11 +15,13 @@ from llama_index.indices.struct_store.sql_query import (
 from llama_index.llm_predictor import LLMPredictor
 from llama_index.llm_predictor.base import BaseLLMPredictor
 from llama_index.prompts.base import BasePromptTemplate, PromptTemplate
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.response.schema import RESPONSE_TYPE, Response
 from llama_index.selectors.llm_selectors import LLMSingleSelector
 from llama_index.selectors.pydantic_selectors import PydanticSingleSelector
 from llama_index.selectors.utils import get_selector_from_context
 from llama_index.tools.query_engine import QueryEngineTool
+from llama_index.utils import print_text
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +42,8 @@ SQL query: {sql_query_str}
 SQL response: {sql_response_str}
 Transformed query: {query_engine_query_str}
 Query engine response: {query_engine_response_str}
-Response: 
-"""  # noqa
+Response:
+"""
 DEFAULT_SQL_JOIN_SYNTHESIS_PROMPT = PromptTemplate(
     DEFAULT_SQL_JOIN_SYNTHESIS_PROMPT_TMPL
 )
@@ -86,7 +87,7 @@ Original question: {query_str}
 SQL query: {sql_query_str}
 SQL response: {sql_response_str}
 New question: "
-"""  # noqa
+"""
 DEFAULT_SQL_AUGMENT_TRANSFORM_PROMPT = PromptTemplate(
     DEFAULT_SQL_AUGMENT_TRANSFORM_PROMPT_TMPL
 )
@@ -129,6 +130,15 @@ class SQLAugmentQueryTransform(BaseQueryTransform):
             sql_augment_transform_prompt or DEFAULT_SQL_AUGMENT_TRANSFORM_PROMPT
         )
         self._check_stop_parser = check_stop_parser or _default_check_stop
+
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {"sql_augment_transform_prompt": self._sql_augment_transform_prompt}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "sql_augment_transform_prompt" in prompts:
+            self._sql_augment_transform_prompt = prompts["sql_augment_transform_prompt"]
 
     def _run(self, query_bundle: QueryBundle, metadata: Dict) -> QueryBundle:
         """Run query transform."""
@@ -220,6 +230,22 @@ class SQLJoinQueryEngine(BaseQueryEngine):
         )
         self._use_sql_join_synthesis = use_sql_join_synthesis
         self._verbose = verbose
+
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {
+            "selector": self._selector,
+            "sql_augment_query_transform": self._sql_augment_query_transform,
+        }
+
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {"sql_join_synthesis_prompt": self._sql_join_synthesis_prompt}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "sql_join_synthesis_prompt" in prompts:
+            self._sql_join_synthesis_prompt = prompts["sql_join_synthesis_prompt"]
 
     def _query_sql_other(self, query_bundle: QueryBundle) -> RESPONSE_TYPE:
         """Query SQL database + other query engine in sequence."""

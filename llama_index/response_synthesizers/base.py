@@ -11,11 +11,19 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List, Optional, Sequence, Union
 
+from llama_index.bridge.pydantic import BaseModel
 from llama_index.callbacks.schema import CBEventType, EventPayload
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.indices.service_context import ServiceContext
-from llama_index.response.schema import RESPONSE_TYPE, Response, StreamingResponse
-from llama_index.schema import BaseNode, NodeWithScore, MetadataMode
+from llama_index.prompts.base import BasePromptTemplate
+from llama_index.prompts.mixin import PromptDictType, PromptMixin, PromptMixinType
+from llama_index.response.schema import (
+    RESPONSE_TYPE,
+    PydanticResponse,
+    Response,
+    StreamingResponse,
+)
+from llama_index.schema import BaseNode, MetadataMode, NodeWithScore
 from llama_index.types import RESPONSE_TEXT_TYPE
 
 logger = logging.getLogger(__name__)
@@ -23,18 +31,25 @@ logger = logging.getLogger(__name__)
 QueryTextType = Union[str, QueryBundle]
 
 
-class BaseSynthesizer(ABC):
+class BaseSynthesizer(PromptMixin):
     """Response builder class."""
 
     def __init__(
         self,
         service_context: Optional[ServiceContext] = None,
         streaming: bool = False,
+        output_cls: BaseModel = None,
     ) -> None:
         """Init params."""
         self._service_context = service_context or ServiceContext.from_defaults()
         self._callback_manager = self._service_context.callback_manager
         self._streaming = streaming
+        self._output_cls = output_cls
+
+    def _get_prompt_modules(self) -> Dict[str, Any]:
+        """Get prompt modules."""
+        # TODO: keep this for now since response synthesizers don't generally have sub-modules
+        return {}
 
     @property
     def service_context(self) -> ServiceContext:
@@ -93,29 +108,37 @@ class BaseSynthesizer(ABC):
             [node_with_score.node for node_with_score in source_nodes]
         )
 
-        if response_str is None or isinstance(response_str, str):
+        if isinstance(response_str, str):
             return Response(
                 response_str,
                 source_nodes=source_nodes,
                 metadata=response_metadata,
             )
-        elif response_str is None or isinstance(response_str, Generator):
+        if isinstance(response_str, Generator):
             return StreamingResponse(
                 response_str,
                 source_nodes=source_nodes,
                 metadata=response_metadata,
             )
-        else:
-            raise ValueError(
-                f"Response must be a string or a generator. Found {type(response_str)}"
+        if isinstance(response_str, self._output_cls):
+            return PydanticResponse(
+                response_str, source_nodes=source_nodes, metadata=response_metadata
             )
+
+        raise ValueError(
+            f"Response must be a string or a generator. Found {type(response_str)}"
+        )
 
     def synthesize(
         self,
         query: QueryTextType,
         nodes: List[NodeWithScore],
         additional_source_nodes: Optional[Sequence[NodeWithScore]] = None,
+        **response_kwargs: Any,
     ) -> RESPONSE_TYPE:
+        if len(nodes) == 0:
+            return Response("Empty Response")
+
         if isinstance(query, str):
             query = QueryBundle(query_str=query)
 
@@ -127,6 +150,7 @@ class BaseSynthesizer(ABC):
                 text_chunks=[
                     n.node.get_content(metadata_mode=MetadataMode.LLM) for n in nodes
                 ],
+                **response_kwargs,
             )
 
             additional_source_nodes = additional_source_nodes or []
@@ -143,7 +167,11 @@ class BaseSynthesizer(ABC):
         query: QueryTextType,
         nodes: List[NodeWithScore],
         additional_source_nodes: Optional[Sequence[NodeWithScore]] = None,
+        **response_kwargs: Any,
     ) -> RESPONSE_TYPE:
+        if len(nodes) == 0:
+            return Response("Empty Response")
+
         if isinstance(query, str):
             query = QueryBundle(query_str=query)
 
@@ -155,6 +183,7 @@ class BaseSynthesizer(ABC):
                 text_chunks=[
                     n.node.get_content(metadata_mode=MetadataMode.LLM) for n in nodes
                 ],
+                **response_kwargs,
             )
 
             additional_source_nodes = additional_source_nodes or []

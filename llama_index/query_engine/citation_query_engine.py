@@ -9,6 +9,7 @@ from llama_index.indices.query.base import BaseQueryEngine
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.prompts import PromptTemplate
 from llama_index.prompts.base import BasePromptTemplate
+from llama_index.prompts.mixin import PromptMixinType
 from llama_index.response.schema import RESPONSE_TYPE
 from llama_index.response_synthesizers import (
     BaseSynthesizer,
@@ -136,7 +137,7 @@ class CitationQueryEngine(BaseQueryEngine):
         # class-specific args
         **kwargs: Any,
     ) -> "CitationQueryEngine":
-        """Initialize a CitationQueryEngine object."
+        """Initialize a CitationQueryEngine object.".
 
         Args:
             index: (BastGPTIndex): index to use for querying
@@ -183,6 +184,10 @@ class CitationQueryEngine(BaseQueryEngine):
             node_postprocessors=node_postprocessors,
         )
 
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {"response_synthesizer": self._response_synthesizer}
+
     def _create_citation_nodes(self, nodes: List[NodeWithScore]) -> List[NodeWithScore]:
         """Modify retrieved nodes to be granular sources."""
         new_nodes: List[NodeWithScore] = []
@@ -192,16 +197,11 @@ class CitationQueryEngine(BaseQueryEngine):
             for text_chunk in text_chunks:
                 text = f"Source {len(new_nodes)+1}:\n{text_chunk}\n"
 
-                new_nodes.append(
-                    NodeWithScore(
-                        node=TextNode(
-                            text=text,
-                            metadata=node.node.metadata or {},
-                            relationships=node.node.relationships or {},
-                        ),
-                        score=node.score,
-                    )
+                new_node = NodeWithScore(
+                    node=TextNode.parse_obj(node.node), score=node.score
                 )
+                new_node.node.text = text
+                new_nodes.append(new_node)
         return new_nodes
 
     def retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
@@ -224,12 +224,11 @@ class CitationQueryEngine(BaseQueryEngine):
         additional_source_nodes: Optional[Sequence[NodeWithScore]] = None,
     ) -> RESPONSE_TYPE:
         nodes = self._create_citation_nodes(nodes)
-        response = self._response_synthesizer.synthesize(
+        return self._response_synthesizer.synthesize(
             query=query_bundle,
             nodes=nodes,
             additional_source_nodes=additional_source_nodes,
         )
-        return response
 
     async def asynthesize(
         self,

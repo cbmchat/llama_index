@@ -7,7 +7,6 @@ from llama_index.agent.openai_agent import (
     DEFAULT_MODEL_NAME,
     BaseOpenAIAgent,
 )
-from llama_index.bridge.langchain import print_text
 from llama_index.callbacks import CallbackManager
 from llama_index.chat_engine.types import (
     AgentChatResponse,
@@ -20,6 +19,7 @@ from llama_index.memory import BaseMemory, ChatMemoryBuffer
 from llama_index.prompts.prompts import QuestionAnswerPrompt
 from llama_index.schema import NodeWithScore
 from llama_index.tools import BaseTool
+from llama_index.utils import print_text
 
 # inspired by DEFAULT_QA_PROMPT_TMPL from llama_index/prompts/default_prompts.py
 # DEFAULT_QA_PROMPT_TMPL = (
@@ -200,3 +200,7 @@ class ContextRetrieverOpenAIAgent(BaseOpenAIAgent):
         return await super().achat(
             formatted_message, chat_history=chat_history, function_call=function_call
         )
+
+    def get_tools(self, message: str) -> List[BaseTool]:
+        """Get tools."""
+        return self._get_tools(message)

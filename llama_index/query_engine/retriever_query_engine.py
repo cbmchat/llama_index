@@ -1,5 +1,6 @@
-from typing import Any, List, Optional, Sequence
+from typing import Any, List, Optional, Sequence, Tuple
 
+from llama_index.bridge.pydantic import BaseModel
 from llama_index.callbacks.base import CallbackManager
 from llama_index.callbacks.schema import CBEventType, EventPayload
 from llama_index.indices.base_retriever import BaseRetriever
@@ -8,6 +9,7 @@ from llama_index.indices.query.base import BaseQueryEngine
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.indices.service_context import ServiceContext
 from llama_index.prompts import BasePromptTemplate
+from llama_index.prompts.mixin import PromptMixinType
 from llama_index.response.schema import RESPONSE_TYPE
 from llama_index.response_synthesizers import (
     BaseSynthesizer,
@@ -47,6 +49,10 @@ class RetrieverQueryEngine(BaseQueryEngine):
 
         super().__init__(callback_manager)
 
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {"response_synthesizer": self._response_synthesizer}
+
     @classmethod
     def from_args(
         cls,
@@ -58,13 +64,15 @@ class RetrieverQueryEngine(BaseQueryEngine):
         response_mode: ResponseMode = ResponseMode.COMPACT,
         text_qa_template: Optional[BasePromptTemplate] = None,
         refine_template: Optional[BasePromptTemplate] = None,
+        summary_template: Optional[BasePromptTemplate] = None,
         simple_template: Optional[BasePromptTemplate] = None,
+        output_cls: Optional[BaseModel] = None,
         use_async: bool = False,
         streaming: bool = False,
         # class-specific args
         **kwargs: Any,
     ) -> "RetrieverQueryEngine":
-        """Initialize a RetrieverQueryEngine object."
+        """Initialize a RetrieverQueryEngine object.".
 
         Args:
             retriever (BaseRetriever): A retriever object.
@@ -88,8 +96,10 @@ class RetrieverQueryEngine(BaseQueryEngine):
             service_context=service_context,
             text_qa_template=text_qa_template,
             refine_template=refine_template,
+            summary_template=summary_template,
             simple_template=simple_template,
             response_mode=response_mode,
+            output_cls=output_cls,
             use_async=use_async,
             streaming=streaming,
         )
@@ -116,15 +126,11 @@ class RetrieverQueryEngine(BaseQueryEngine):
 
     def retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         nodes = self._retriever.retrieve(query_bundle)
-        nodes = self._apply_node_postprocessors(nodes, query_bundle=query_bundle)
-
-        return nodes
+        return self._apply_node_postprocessors(nodes, query_bundle=query_bundle)
 
     async def aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         nodes = await self._retriever.aretrieve(query_bundle)
-        nodes = self._apply_node_postprocessors(nodes, query_bundle=query_bundle)
-
-        return nodes
+        return self._apply_node_postprocessors(nodes, query_bundle=query_bundle)
 
     def with_retriever(self, retriever: BaseRetriever) -> "RetrieverQueryEngine":
         return RetrieverQueryEngine(

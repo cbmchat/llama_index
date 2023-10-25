@@ -4,6 +4,7 @@ from llama_index.callbacks.schema import CBEventType, EventPayload
 from llama_index.indices.query.base import BaseQueryEngine
 from llama_index.indices.query.query_transform.base import StepDecomposeQueryTransform
 from llama_index.indices.query.schema import QueryBundle
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.response.schema import RESPONSE_TYPE
 from llama_index.response_synthesizers import BaseSynthesizer, get_response_synthesizer
 from llama_index.schema import NodeWithScore, TextNode
@@ -15,10 +16,7 @@ def default_stop_fn(stop_dict: Dict) -> bool:
     if query_bundle is None:
         raise ValueError("Response must be provided to stop function.")
 
-    if "none" in query_bundle.query_str.lower():
-        return True
-    else:
-        return False
+    return "none" in query_bundle.query_str.lower()
 
 
 class MultiStepQueryEngine(BaseQueryEngine):
@@ -69,6 +67,13 @@ class MultiStepQueryEngine(BaseQueryEngine):
         callback_manager = self._query_engine.callback_manager
         super().__init__(callback_manager)
 
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {
+            "response_synthesizer": self._response_synthesizer,
+            "query_transform": self._query_transform,
+        }
+
     def _query(self, query_bundle: QueryBundle) -> RESPONSE_TYPE:
         with self.callback_manager.event(
             CBEventType.QUERY, payload={EventPayload.QUERY_STR: query_bundle.query_str}
@@ -111,8 +116,7 @@ class MultiStepQueryEngine(BaseQueryEngine):
             "prev_reasoning": prev_reasoning,
             "index_summary": self._index_summary,
         }
-        query_bundle = self._query_transform(query_bundle, metadata=transform_metadata)
-        return query_bundle
+        return self._query_transform(query_bundle, metadata=transform_metadata)
 
     def _query_multistep(
         self, query_bundle: QueryBundle
@@ -148,7 +152,7 @@ class MultiStepQueryEngine(BaseQueryEngine):
             # append to response builder
             cur_qa_text = (
                 f"\nQuestion: {updated_query_bundle.query_str}\n"
-                f"Answer: {str(cur_response)}"
+                f"Answer: {cur_response!s}"
             )
             text_chunks.append(cur_qa_text)
             for source_node in cur_response.source_nodes:
@@ -159,7 +163,7 @@ class MultiStepQueryEngine(BaseQueryEngine):
             )
 
             prev_reasoning += (
-                f"- {updated_query_bundle.query_str}\n" f"- {str(cur_response)}\n"
+                f"- {updated_query_bundle.query_str}\n" f"- {cur_response!s}\n"
             )
             cur_steps += 1
 

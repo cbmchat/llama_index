@@ -2,7 +2,6 @@
 from typing import Callable, List, Optional
 
 from llama_index.bridge.pydantic import Field, PrivateAttr
-
 from llama_index.indices.postprocessor.types import BaseNodePostprocessor
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.indices.service_context import ServiceContext
@@ -12,6 +11,7 @@ from llama_index.indices.utils import (
 )
 from llama_index.prompts import BasePromptTemplate
 from llama_index.prompts.default_prompts import DEFAULT_CHOICE_SELECT_PROMPT
+from llama_index.prompts.mixin import PromptDictType, PromptMixin, PromptMixinType
 from llama_index.schema import NodeWithScore
 
 
@@ -56,6 +56,15 @@ class LLMRerank(BaseNodePostprocessor):
             top_n=top_n,
         )
 
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {"choice_select_prompt": self.choice_select_prompt}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "choice_select_prompt" in prompts:
+            self.choice_select_prompt = prompts["choice_select_prompt"]
+
     @classmethod
     def class_name(cls) -> str:
         return "LLMRerank"
@@ -95,7 +104,6 @@ class LLMRerank(BaseNodePostprocessor):
                 ]
             )
 
-        results = sorted(initial_results, key=lambda x: x.score or 0.0, reverse=True)[
+        return sorted(initial_results, key=lambda x: x.score or 0.0, reverse=True)[
             : self.top_n
         ]
-        return results

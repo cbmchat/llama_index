@@ -2,7 +2,6 @@ import os
 from typing import Any, Optional
 
 from llama_index.bridge.pydantic import Field, PrivateAttr
-
 from llama_index.callbacks import CallbackManager
 from llama_index.constants import DEFAULT_CONTEXT_WINDOW
 from llama_index.llms.base import (
@@ -15,7 +14,7 @@ from llama_index.llms.custom import CustomLLM
 
 
 class PredibaseLLM(CustomLLM):
-    """Predibase LLM"""
+    """Predibase LLM."""
 
     model_name: str = Field(description="The Predibase model to use.")
     predibase_api_key: str = Field(description="The Predibase API key to use.")
@@ -54,12 +53,12 @@ class PredibaseLLM(CustomLLM):
             callback_manager=callback_manager,
         )
 
-    def initialize_client(self, predibase_api_key: str) -> Any:
+    @staticmethod
+    def initialize_client(predibase_api_key: str) -> Any:
         try:
             from predibase import PredibaseClient
 
-            pc = PredibaseClient(token=self.predibase_api_key)
-            return pc
+            return PredibaseClient(token=predibase_api_key)
         except ImportError as e:
             raise ImportError(
                 "Could not import Predibase Python package. "
@@ -70,7 +69,6 @@ class PredibaseLLM(CustomLLM):
 
     @classmethod
     def class_name(cls) -> str:
-        """Get class name."""
         return "PredibaseLLM"
 
     @property
@@ -82,18 +80,14 @@ class PredibaseLLM(CustomLLM):
             model_name=self.model_name,
         )
 
-    # "CompletionResponse"
     @llm_completion_callback()
     def complete(self, prompt: str, **kwargs: Any) -> "CompletionResponse":
-        model_kwargs = {
-            "temperature": self.temperature,
-            "max_new_tokens": self.max_new_tokens,
-        }
-        results = self._client.prompt(prompt, self.model_name, options=model_kwargs)
-        return CompletionResponse(
-            text=results.loc[0, "response"], additional_kwargs=model_kwargs
+        llm = self._client.LLM(f"pb://deployments/{self.model_name}")
+        results = llm.prompt(
+            prompt, max_new_tokens=self.max_new_tokens, temperature=self.temperature
         )
+        return CompletionResponse(text=results.response)
 
     @llm_completion_callback()
     def stream_complete(self, prompt: str, **kwargs: Any) -> "CompletionResponseGen":
-        raise NotImplementedError()
+        raise NotImplementedError

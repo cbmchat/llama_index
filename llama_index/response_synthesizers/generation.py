@@ -1,8 +1,9 @@
-from typing import Any, Optional, Sequence
+from typing import Any, Optional, Sequence, Tuple
 
 from llama_index.indices.service_context import ServiceContext
 from llama_index.prompts import BasePromptTemplate
 from llama_index.prompts.default_prompts import DEFAULT_SIMPLE_INPUT_PROMPT
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.response_synthesizers.base import BaseSynthesizer
 from llama_index.types import RESPONSE_TEXT_TYPE
 
@@ -17,6 +18,15 @@ class Generation(BaseSynthesizer):
         super().__init__(service_context=service_context, streaming=streaming)
         self._input_prompt = simple_template or DEFAULT_SIMPLE_INPUT_PROMPT
 
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {"simple_template": self._input_prompt}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "simple_template" in prompts:
+            self._input_prompt = prompts["simple_template"]
+
     async def aget_response(
         self,
         query_str: str,
@@ -27,17 +37,17 @@ class Generation(BaseSynthesizer):
         del text_chunks
 
         if not self._streaming:
-            response = await self._service_context.llm_predictor.apredict(
+            return await self._service_context.llm_predictor.apredict(
                 self._input_prompt,
                 query_str=query_str,
+                **response_kwargs,
             )
-            return response
         else:
-            stream_response = self._service_context.llm_predictor.stream(
+            return self._service_context.llm_predictor.stream(
                 self._input_prompt,
                 query_str=query_str,
+                **response_kwargs,
             )
-            return stream_response
 
     def get_response(
         self,
@@ -49,14 +59,14 @@ class Generation(BaseSynthesizer):
         del text_chunks
 
         if not self._streaming:
-            response = self._service_context.llm_predictor.predict(
+            return self._service_context.llm_predictor.predict(
                 self._input_prompt,
                 query_str=query_str,
+                **response_kwargs,
             )
-            return response
         else:
-            stream_response = self._service_context.llm_predictor.stream(
+            return self._service_context.llm_predictor.stream(
                 self._input_prompt,
                 query_str=query_str,
+                **response_kwargs,
             )
-            return stream_response

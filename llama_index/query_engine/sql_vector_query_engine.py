@@ -13,6 +13,7 @@ from llama_index.indices.vector_store.retrievers.auto_retriever import (
     VectorIndexAutoRetriever,
 )
 from llama_index.prompts.base import BasePromptTemplate, PromptTemplate
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.query_engine.retriever_query_engine import RetrieverQueryEngine
 from llama_index.query_engine.sql_join_query_engine import (
     SQLAugmentQueryTransform,
@@ -39,8 +40,8 @@ SQL query: {sql_query_str}
 SQL response: {sql_response_str}
 Transformed vector store query: {query_engine_query_str}
 Vector store response: {query_engine_response_str}
-Response: 
-"""  # noqa
+Response:
+"""
 DEFAULT_SQL_VECTOR_SYNTHESIS_PROMPT = PromptTemplate(
     DEFAULT_SQL_VECTOR_SYNTHESIS_PROMPT_TMPL
 )
@@ -122,6 +123,22 @@ class SQLAutoVectorQueryEngine(SQLJoinQueryEngine):
             callback_manager=callback_manager,
             verbose=verbose,
         )
+
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {
+            "selector": self._selector,
+            "sql_augment_query_transform": self._sql_augment_query_transform,
+        }
+
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {"sql_join_synthesis_prompt": self._sql_join_synthesis_prompt}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "sql_join_synthesis_prompt" in prompts:
+            self._sql_join_synthesis_prompt = prompts["sql_join_synthesis_prompt"]
 
     @classmethod
     def from_sql_and_vector_query_engines(

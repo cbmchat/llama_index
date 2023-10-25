@@ -1,4 +1,13 @@
+from llama_index.indices.query.base import BaseQueryEngine
+
+# SQL
+from llama_index.indices.struct_store.sql_query import (
+    NLSQLTableQueryEngine,
+    PGVectorSQLQueryEngine,
+    SQLTableRetrieverQueryEngine,
+)
 from llama_index.query_engine.citation_query_engine import CitationQueryEngine
+from llama_index.query_engine.custom import CustomQueryEngine
 from llama_index.query_engine.flare.base import FLAREInstructQueryEngine
 from llama_index.query_engine.graph_query_engine import ComposableGraphQueryEngine
 from llama_index.query_engine.knowledge_graph_query_engine import (
@@ -44,4 +53,9 @@ __all__ = [
     "FLAREInstructQueryEngine",
     "PandasQueryEngine",
     "KnowledgeGraphQueryEngine",
+    "BaseQueryEngine",
+    "CustomQueryEngine",
+    # SQL
+    "SQLTableRetrieverQueryEngine",
+    "NLSQLTableQueryEngine" "PGVectorSQLQueryEngine",
 ]

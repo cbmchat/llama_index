@@ -1,11 +1,10 @@
-""" Knowledge Graph Query Engine"""
+""" Knowledge Graph Query Engine."""
 
 import logging
-from typing import Any, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
-from llama_index.bridge.langchain import print_text
 from llama_index.callbacks.schema import CBEventType, EventPayload
-from llama_index.graph_stores.registery import (
+from llama_index.graph_stores.registry import (
     GRAPH_STORE_CLASS_TO_GRAPH_STORE_TYPE,
     GraphStoreType,
 )
@@ -13,10 +12,12 @@ from llama_index.indices.query.base import BaseQueryEngine
 from llama_index.indices.query.schema import QueryBundle
 from llama_index.indices.service_context import ServiceContext
 from llama_index.prompts.base import BasePromptTemplate, PromptTemplate, PromptType
+from llama_index.prompts.mixin import PromptDictType, PromptMixinType
 from llama_index.response.schema import RESPONSE_TYPE
 from llama_index.response_synthesizers import BaseSynthesizer, get_response_synthesizer
 from llama_index.schema import NodeWithScore, TextNode
 from llama_index.storage.storage_context import StorageContext
+from llama_index.utils import print_text
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ Given the Graph Query response, synthesise a response to the original question.
 Original question: {query_str}
 Graph query: {kg_query_str}
 Graph response: {kg_response_str}
-Response: 
+Response:
 """
 
 DEFAULT_KG_RESPONSE_ANSWER_PROMPT = PromptTemplate(
@@ -160,6 +161,24 @@ class KnowledgeGraphQueryEngine(BaseQueryEngine):
         )
 
         super().__init__(self._service_context.callback_manager)
+
+    def _get_prompts(self) -> Dict[str, Any]:
+        """Get prompts."""
+        return {
+            "graph_query_synthesis_prompt": self._graph_query_synthesis_prompt,
+            "graph_response_answer_prompt": self._graph_response_answer_prompt,
+        }
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
+        if "graph_query_synthesis_prompt" in prompts:
+            self._graph_query_synthesis_prompt = prompts["graph_query_synthesis_prompt"]
+        if "graph_response_answer_prompt" in prompts:
+            self._graph_response_answer_prompt = prompts["graph_response_answer_prompt"]
+
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt sub-modules."""
+        return {"response_synthesizer": self._response_synthesizer}
 
     def generate_query(self, query_str: str) -> str:
         """Generate a Graph Store Query from a query bundle."""

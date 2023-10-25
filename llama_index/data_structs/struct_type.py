@@ -45,11 +45,17 @@ class IndexStructType(str, Enum):
         MYSCALE ("myscale"): MyScale Vector Store Index.
             See :ref:`Ref-Indices-VectorStore`
             for more information on the MyScale vector store index.
+        EPSILLA ("epsilla"): Epsilla Vector Store Index.
+            See :ref:`Ref-Indices-VectorStore`
+            for more information on the Epsilla vector store index.
         CHATGPT_RETRIEVAL_PLUGIN ("chatgpt_retrieval_plugin"): ChatGPT
             retrieval plugin index.
         SQL ("SQL"): SQL Structured Store Index.
             See :ref:`Ref-Indices-StructStore`
             for more information on the SQL vector store index.
+        DASHVECTOR ("dashvector"): DashVector Vector Store Index.
+            See :ref:`Ref-Indices-VectorStore`
+            for more information on the Dashvecotor vector store index.
         KG ("kg"): Knowledge Graph index.
             See :ref:`Ref-Indices-Knowledge-Graph` for KG indices.
         DOCUMENT_SUMMARY ("document_summary"): Document Summary Index.
@@ -77,8 +83,10 @@ class IndexStructType(str, Enum):
     MYSCALE = "myscale"
     VECTOR_STORE = "vector_store"
     OPENSEARCH = "opensearch"
+    DASHVECTOR = "dashvector"
     CHATGPT_RETRIEVAL_PLUGIN = "chatgpt_retrieval_plugin"
     DEEPLAKE = "deeplake"
+    EPSILLA = "epsilla"
     # for SQL index
     SQL = "sql"
     # for KG index

@@ -3,11 +3,23 @@ from typing import List, Optional
 
 from llama_index.indices.query.schema import QueryBundle, QueryType
 from llama_index.indices.service_context import ServiceContext
+from llama_index.prompts.mixin import PromptDictType, PromptMixin, PromptMixinType
 from llama_index.schema import NodeWithScore
 
 
-class BaseRetriever(ABC):
+class BaseRetriever(PromptMixin):
     """Base retriever."""
+
+    def _get_prompts(self) -> PromptDictType:
+        """Get prompts."""
+        return {}
+
+    def _get_prompt_modules(self) -> PromptMixinType:
+        """Get prompt modules."""
+        return {}
+
+    def _update_prompts(self, prompts: PromptDictType) -> None:
+        """Update prompts."""
 
     def retrieve(self, str_or_query_bundle: QueryType) -> List[NodeWithScore]:
         """Retrieve nodes given query.
@@ -24,8 +36,7 @@ class BaseRetriever(ABC):
     async def aretrieve(self, str_or_query_bundle: QueryType) -> List[NodeWithScore]:
         if isinstance(str_or_query_bundle, str):
             str_or_query_bundle = QueryBundle(str_or_query_bundle)
-        nodes = await self._aretrieve(str_or_query_bundle)
-        return nodes
+        return await self._aretrieve(str_or_query_bundle)
 
     @abstractmethod
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
@@ -34,12 +45,11 @@ class BaseRetriever(ABC):
         Implemented by the user.
 
         """
-        pass
 
     # TODO: make this abstract
     # @abstractmethod
     async def _aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
-        """Asyncronously retrieve nodes given query.
+        """Asynchronously retrieve nodes given query.
 
         Implemented by the user.
 
@@ -49,7 +59,7 @@ class BaseRetriever(ABC):
     def get_service_context(self) -> Optional[ServiceContext]:
         """Attempts to resolve a service context.
         Short-circuits at self.service_context, self._service_context,
-        or self._index.service_context
+        or self._index.service_context.
         """
         if hasattr(self, "service_context"):
             return self.service_context
